@@ -52,14 +52,14 @@ class ConfereAqui:
         background_label = Label(self.root, image=self.backgroundimg)
         background_label.place(x=0, y=0, relwidth=1, relheight=1)
 
-        btnenviarimg = Button(self.root, image=self.img_btn_send, borderwidth=0, highlightthickness=0, bd=0,
+        btn_send_img = Button(self.root, image=self.img_btn_send, borderwidth=0, highlightthickness=0, bd=0,
                               activebackground="#145b98", cursor="hand2",
-                              command=lambda: self.select_image(btnenviarimg, btnresultadosimg))
-        btnenviarimg.place(x=390, y=310)
+                              command=lambda: self.select_image(btn_send_img, btn_img_result))
+        btn_send_img.place(x=390, y=310)
 
-        btnresultadosimg = Button(self.root, image=self.img_btn_result, borderwidth=0, highlightthickness=0, bd=0,
+        btn_img_result = Button(self.root, image=self.img_btn_result, borderwidth=0, highlightthickness=0, bd=0,
                                   activebackground="#145b98", cursor="hand2", command=self.page_results)
-        btnresultadosimg.place(x=445, y=430)
+        btn_img_result.place(x=445, y=430)
 
     def page_results(self):
         master3 = Toplevel(self.root)
@@ -101,18 +101,18 @@ class ConfereAqui:
         conn.close()
 
         # Cria o Treeview com as colunas
-        tree = ttk.Treeview(master, columns=("ID", "Nome", "Qtd. acertos", "Qtd. questões", "Data correção"),
+        tree = ttk.Treeview(master, columns=("ID", "Nome", "Qtd. correct_question", "Qtd. questões", "Data correção"),
                             show="headings", style="Treeview")
 
         tree.heading("ID", text="ID")
         tree.heading("Nome", text="Nome")
-        tree.heading("Qtd. acertos", text="Qtd. acertos")
+        tree.heading("Qtd. correct_question", text="Qtd. correct_question")
         tree.heading("Qtd. questões", text="Qtd. questões")
         tree.heading("Data correção", text="Data correção")
 
         tree.column("ID", width=50, anchor="center")
         tree.column("Nome", width=200, anchor="w")
-        tree.column("Qtd. acertos", width=100, anchor="center")
+        tree.column("Qtd. correct_question", width=100, anchor="center")
         tree.column("Qtd. questões", width=100, anchor="center")
         tree.column("Data correção", width=100, anchor="center")
 
@@ -158,12 +158,12 @@ class ConfereAqui:
                activebackground="#145b98", cursor="hand2", command=self.load_result_window).place(x=695, y=670)
 
     def load_result_window(self):
-        def retornar():
+        def return_window():
             result_window.destroy()
-        def salvar_bd(acertos, questoes, nome_estudante):
-            retornar()
-            #nome_estudante = camponome.get("1.0", "end-1c")
-            self.salvar_resultado(nome_estudante, acertos, questoes)
+        def save_db(correct_question, questions, nm_student):
+            return_window()
+            #nm_student = camponome.get("1.0", "end-1c")
+            self.save_result(nm_student, correct_question, questions)
         # Configuração inicial da janela
         result_window = Toplevel(self.root)
         result_window.title("Resultado")
@@ -176,30 +176,30 @@ class ConfereAqui:
         background_label.place(x=0, y=0, relwidth=1, relheight=1)
 
         # Definindo valores
-        questoes = 25
-        respostas = [0, 2, 1, 2, 0, 0, 2, 1, 3, 3, 2, 2, 1, 1, 2, 2, 1, 3, 4, 2, 1, 2, 1, 1, 2]
+        total_question = 25
+        answer = [0, 2, 1, 2, 0, 0, 2, 1, 3, 3, 2, 2, 1, 1, 2, 2, 1, 3, 4, 2, 1, 2, 1, 1, 2]
         global myindex
         myindex = leitura.start_reading(filename)
-        pontuacao = [1 if respostas[x] == myindex[x] else 0 for x in range(questoes)]
-        scoreporcent = (sum(pontuacao) / questoes) * 100
-        acertos = sum(pontuacao)
+        score = [1 if answer[x] == myindex[x] else 0 for x in range(total_question)]
+        scoreporcent = (sum(score) / total_question) * 100
+        correct_question = sum(score)
 
         # Configuração de Labels e botões principais
         self.create_label(result_window, '{0}{1}'.format(scoreporcent, '%'), (510, 595), "#51728b", "Cambria 30")
-        self.create_label(result_window, '{0}{1}'.format(acertos, '/25'), (520, 505), "#6d8192", "Cambria 25")
+        self.create_label(result_window, '{0}{1}'.format(correct_question, '/25'), (520, 505), "#6d8192", "Cambria 25")
 
-        self.create_button(result_window, image=self.btnexcluirimg, pos=(450, 290), command=retornar)
+        self.create_button(result_window, image=self.btnexcluirimg, pos=(450, 290), command=return_window)
         self.create_button(result_window, image=self.btnsalvarimg, pos=(450, 180),
-                      command=lambda: salvar_bd(acertos, questoes, camponome.get("1.0", "end-1c")))
+                      command=lambda: save_db(correct_question, total_question, txt_name.get("1.0", "end-1c")))
 
         # Campo de texto
-        camponome = Text(result_window, height=1, width=43, bg="#88a3ba", font="Cambria 25", fg="white")
-        camponome.place(x=452, y=60)
+        txt_name = Text(result_window, height=1, width=43, bg="#88a3ba", font="Cambria 25", fg="white")
+        txt_name.place(x=452, y=60)
 
         # Função para criar botões de resposta
         buttons = []
-        for i in range(questoes):
-            self.create_response_buttons(result_window, i, respostas, buttons)
+        for i in range(total_question):
+            self.create_response_buttons(result_window, i, answer, buttons)
             self.create_question_number_label(result_window, i)
 
     def create_label(self, window, text, pos, bg, font):
@@ -214,56 +214,56 @@ class ConfereAqui:
         return button
 
     def create_question_number_label(self, window, index):
-        labelnumero = Label(window, text=f'{index + 1} -', bg="#1b6baf", fg="white", font="Cambria")
-        labelnumero.grid(row=index + 1, column=1, padx=(10, 0))
+        lbl_number = Label(window, text=f'{index + 1} -', bg="#1b6baf", fg="white", font="Cambria")
+        lbl_number.grid(row=index + 1, column=1, padx=(10, 0))
 
-    def create_response_buttons(self, window, index, respostas, buttons):
+    def create_response_buttons(self, window, index, answer, buttons):
         x = 0
-        linha = index
+        row = index
         options = [self.letraa, self.letrab, self.letrac, self.letrad, self.letrae]
         selected_options = [self.letraax, self.letrabx, self.letracx, self.letradx, self.letraex]
         student_options = [self.letraaass, self.letrabass, self.letracass, self.letradass, self.letraeass]
 
 
         for i, option in enumerate(options):
-            is_selected = (respostas[linha] == i)
+            is_selected = (answer[row] == i)
             image = selected_options[i] if is_selected else option
             button = Button(
                 window, image=image, activebackground="#1b6aae", highlightthickness=0, bd=0, cursor="hand2",
-                command=lambda count=len(buttons), linha=linha, x=i: self.alternar(count, linha, x, respostas, buttons)
+                command=lambda count=len(buttons), row=row, x=i: self.change_answer(count, row, x, answer, buttons)
             )
-            button.grid(row=linha + 1, column=x + 1, padx=(80 if i == 0 else 0, 0))
+            button.grid(row=row + 1, column=x + 1, padx=(80 if i == 0 else 0, 0))
             buttons.append(button)
 
-            if respostas[linha] != myindex[linha] and myindex[linha] == i:
-                botao_aluno = Button(window, image=student_options[i], activebackground="#1b6aae", highlightthickness=0, bd=0,
+            if answer[row] != myindex[row] and myindex[row] == i:
+                button_student = Button(window, image=student_options[i], activebackground="#1b6aae", highlightthickness=0, bd=0,
                                      cursor="hand2")
-                botao_aluno.image = student_options[i]
-                botao_aluno.grid(row=linha + 1, column=x + 1)
+                button_student.image = student_options[i]
+                button_student.grid(row=row + 1, column=x + 1)
 
             x += 1
 
-    def alternar(self, v, linha, x, respostas, buttons):
+    def change_answer(self, v, row, x, answer, buttons):
         # Atualiza a resposta do aluno
-        respostas[linha] = x
-        k = linha * 5
+        answer[row] = x
+        k = row * 5
         # Reseta as imagens dos botões de opções
         for i in range(5):
             buttons[k + i].configure(image=[self.letraa, self.letrab, self.letrac, self.letrad, self.letrae][i])
         # Define a imagem do botão selecionado
         buttons[v].configure(image=[self.letraax, self.letrabx, self.letracx, self.letradx, self.letraex][x])
 
-    def salvar_resultado(self, nome_estudante, acertos, total_questoes):
+    def save_result(self, nm_student, correct_question, total_question):
         try:
             conn = sqlite3.connect('dbcorretor.db')
             cursor = conn.cursor()
 
             cursor.execute("INSERT INTO tab_result (nm_student, qty_score, qty_question) VALUES (?, ?, ?)",
-                           (nome_estudante, acertos, total_questoes))
+                           (nm_student, correct_question, total_question))
             conn.commit()
             conn.close()
 
-            messagebox.showinfo("Sucesso", f"Resultado salvo com sucesso! \nEstudante:{nome_estudante} ")
+            messagebox.showinfo("Sucesso", f"Resultado salvo com sucesso! \nEstudante:{nm_student} ")
         except sqlite3.Error as e:
             messagebox.showerror("Erro", f"Erro ao salvar no banco de dados: {e}")
 
