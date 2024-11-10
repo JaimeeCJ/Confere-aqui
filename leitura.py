@@ -2,6 +2,14 @@ import cv2
 import numpy as np
 import utlis
 
+def adjust_brightness_contrast(img_gray):
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    return clahe.apply(img_gray)
+def apply_gamma_correction(img, gamma=1.2):
+    inv_gamma = 1.0 / gamma
+    table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+    return cv2.LUT(img, table)
+
 def start_reading(self):
     path = self
     width_img = 700
@@ -15,16 +23,21 @@ def start_reading(self):
 
     # PREPROCESSAMENTO
     img = cv2.resize(img, (width_img, height_img))
+    img = apply_gamma_correction(img)
     img_contours = img.copy()
     # img_final = img.copy()
     img_biggest_contours = img.copy()
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_blur = cv2.GaussianBlur(img_gray, (5, 5), 1)
+    img_gray = adjust_brightness_contrast(img_gray)
+
+    img_blur = cv2.GaussianBlur(img_gray, (7, 7), 1)
+    #cv2.imshow("img_blur", img_gray)
     img_canny = cv2.Canny(img_blur, 10, 50)
+    #cv2.imshow("GaussianBlur, Canny, CLAHE, Gamma Correction", img_gray)
     # CONTORNOS
     contours, hierarchy = cv2.findContours(img_canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     cv2.drawContours(img_contours, contours, -1, (0, 255, 0), 10)
-    # cv2.imshow("contorno", img_contours)
+
     # RETANGULOS
     rect_contours = utlis.rect_contour(contours)
     biggest_contour = utlis.get_corner_points(rect_contours[0])
@@ -35,7 +48,7 @@ def start_reading(self):
         cv2.drawContours(img_biggest_contours, biggest_contour, -1, (255, 0, 0), 20)  # azul
         cv2.drawContours(img_biggest_contours, grade_points, -1, (0, 255, 0), 20)  # verde
 
-        # cv2.imshow("antigo maior", img_biggest_contours)
+        #cv2.imshow("maiores contornos", img_biggest_contours)
 
         biggest_contour = utlis.reorder(biggest_contour)
         grade_points = utlis.reorder(grade_points)
@@ -44,21 +57,19 @@ def start_reading(self):
         pt2 = np.float32([[0, 0], [width_img, 0], [0, height_img], [width_img, height_img]])
         matrix = cv2.getPerspectiveTransform(pt1, pt2)
         img_warp_colored = cv2.warpPerspective(img, matrix, (width_img, height_img))
-        # cv2.imshow("warp color", img_warp_colored)
+
         pt_g1 = np.float32(grade_points)
         pt_g2 = np.float32([[0, 0], [325, 0], [0, 150], [325, 150]])
         matrix_g = cv2.getPerspectiveTransform(pt_g1, pt_g2)
         img_grade_display = cv2.warpPerspective(img, matrix_g, (325, 150))
-        # cv2.imshow("ok", img_grade_display)
+        #cv2.imshow("ok", img_grade_display)
 
     # Aonde ta marcado
     img_warp_gray = cv2.cvtColor(img_warp_colored, cv2.COLOR_BGR2GRAY)
-    img_thresh = cv2.threshold(img_warp_gray, 170, 255, cv2.THRESH_BINARY_INV)[1]
-
+    img_thresh = cv2.adaptiveThreshold(img_warp_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                       cv2.THRESH_BINARY_INV, 11, 2)
+    #cv2.imshow("im_thresh and img_warp_gray", img_thresh)
     boxes = utlis.split_boxes(img_thresh)
-    # cv2.imshow("okbuddy", boxes[1])
-    # print(cv2.countNonZero(boxes[2]), cv2.countNonZero(boxes[4]))
-
     # Sabendo qual a questão tem mais pixels
     my_pixel_val = np.zeros((questions, choices))
     count_c = 0
@@ -77,6 +88,6 @@ def start_reading(self):
         arr = my_pixel_val[x]
         my_index_val = np.where(arr == np.amax(arr))
         my_index.append(my_index_val[0][0])
-
+    print(my_index)
     cv2.waitKey(0)
     return my_index

@@ -5,7 +5,7 @@ import sqlite3
 import leitura
 from PIL import Image, ImageTk
 from tkinter import Label, Button, Text, Toplevel, messagebox, ttk
-
+from decimal import Decimal, ROUND_DOWN
 
 class ConfereAqui:
     def __init__(self, root):
@@ -161,9 +161,9 @@ class ConfereAqui:
         def return_window():
             result_window.destroy()
         def save_db(correct_question, questions, nm_student):
+            correct_question = correct_question.split("/", 1)
             return_window()
-            #nm_student = camponome.get("1.0", "end-1c")
-            self.save_result(nm_student, correct_question, questions)
+            self.save_result(nm_student, int(correct_question[0]), questions)
         # Configuração inicial da janela
         result_window = Toplevel(self.root)
         result_window.title("Resultado")
@@ -177,20 +177,23 @@ class ConfereAqui:
 
         # Definindo valores
         total_question = 25
-        answer = [0, 2, 1, 2, 0, 0, 2, 1, 3, 3, 2, 2, 1, 1, 2, 2, 1, 3, 4, 2, 1, 2, 1, 1, 2]
+        global answer
+        answer = [0, 1, 1, 1, 0, 0, 2, 1, 3, 3, 2, 2, 1, 1, 2, 2, 1, 3, 4, 2, 1, 2, 1, 1, 2]
         global myindex
+        # Faz a leitura da foto com a biblioteca OPENCV
         myindex = leitura.start_reading(filename)
         score = [1 if answer[x] == myindex[x] else 0 for x in range(total_question)]
         scoreporcent = (sum(score) / total_question) * 100
+        scoreporcent = Decimal(scoreporcent).quantize(Decimal("0.00"), rounding=ROUND_DOWN)
         correct_question = sum(score)
 
         # Configuração de Labels e botões principais
-        self.create_label(result_window, '{0}{1}'.format(scoreporcent, '%'), (510, 595), "#51728b", "Cambria 30")
-        self.create_label(result_window, '{0}{1}'.format(correct_question, '/25'), (520, 505), "#6d8192", "Cambria 25")
+        self.scoreporcent_label  = self.create_label(result_window, '{0}{1}'.format(scoreporcent, '%'), (510, 595), "#51728b", "Cambria 30")
+        self.correct_label  = self.create_label(result_window, '{0}{1}'.format(correct_question, '/25'), (520, 505), "#6d8192", "Cambria 25")
 
         self.create_button(result_window, image=self.btnexcluirimg, pos=(450, 290), command=return_window)
         self.create_button(result_window, image=self.btnsalvarimg, pos=(450, 180),
-                      command=lambda: save_db(correct_question, total_question, txt_name.get("1.0", "end-1c")))
+                      command=lambda: save_db(self.correct_label.cget("text"), total_question, txt_name.get("1.0", "end-1c")))
 
         # Campo de texto
         txt_name = Text(result_window, height=1, width=43, bg="#88a3ba", font="Cambria 25", fg="white")
@@ -199,7 +202,8 @@ class ConfereAqui:
         # Função para criar botões de resposta
         buttons = []
         for i in range(total_question):
-            self.create_response_buttons(result_window, i, answer, buttons)
+
+            self.create_response_buttons(result_window, i, answer, buttons, width_pady=(230 if i == 0 else 0))
             self.create_question_number_label(result_window, i)
 
     def create_label(self, window, text, pos, bg, font):
@@ -217,41 +221,58 @@ class ConfereAqui:
         lbl_number = Label(window, text=f'{index + 1} -', bg="#1b6baf", fg="white", font="Cambria")
         lbl_number.grid(row=index + 1, column=1, padx=(10, 0))
 
-    def create_response_buttons(self, window, index, answer, buttons):
+    def create_response_buttons(self, window, index, answer, buttons, width_pady):
         x = 0
-        row = index
+        row = index  # Índice da questão
         options = [self.letraa, self.letrab, self.letrac, self.letrad, self.letrae]
-        selected_options = [self.letraax, self.letrabx, self.letracx, self.letradx, self.letraex]
+        correct_question = [self.letraax, self.letrabx, self.letracx, self.letradx, self.letraex]
         student_options = [self.letraaass, self.letrabass, self.letracass, self.letradass, self.letraeass]
 
-
         for i, option in enumerate(options):
-            is_selected = (answer[row] == i)
-            image = selected_options[i] if is_selected else option
+            # Se é a alternativa correta
+
+            is_selected = (myindex[row] == i)
+            # Se é a alternativa selecionada pelo aluno
+            is_correct = (answer[row] == i)
+
+            # Define a imagem do botão com base em se ele é a resposta correta e/ou a resposta do aluno
+            if is_correct and is_selected:
+                image = correct_question[i]  # Escolha do aluno e resposta correta
+            elif is_correct:
+                image = correct_question[i]  # Apenas a resposta correta
+            elif is_selected:
+                image = student_options[i]  # Apenas a escolha do aluno
+            else:
+                image = option  # Opção padrão
+
+            # Criação do botão
             button = Button(
                 window, image=image, activebackground="#1b6aae", highlightthickness=0, bd=0, cursor="hand2",
-                command=lambda count=len(buttons), row=row, x=i: self.change_answer(count, row, x, answer, buttons)
+                pady=width_pady,
+                command=lambda count=len(buttons), row=row, x=i: self.change_answer(count, row, x, answer, buttons,
+                                                                                    myindex)
             )
             button.grid(row=row + 1, column=x + 1, padx=(80 if i == 0 else 0, 0))
             buttons.append(button)
-
-            if answer[row] != myindex[row] and myindex[row] == i:
-                button_student = Button(window, image=student_options[i], activebackground="#1b6aae", highlightthickness=0, bd=0,
-                                     cursor="hand2")
-                button_student.image = student_options[i]
-                button_student.grid(row=row + 1, column=x + 1)
-
             x += 1
 
-    def change_answer(self, v, row, x, answer, buttons):
-        # Atualiza a resposta do aluno
-        answer[row] = x
+    def change_answer(self, last_position, row, new_position, answers, buttons, myindex):
+        myindex[row] = new_position
+        self.recalculate_score()
+
         k = row * 5
-        # Reseta as imagens dos botões de opções
         for i in range(5):
-            buttons[k + i].configure(image=[self.letraa, self.letrab, self.letrac, self.letrad, self.letrae][i])
-        # Define a imagem do botão selecionado
-        buttons[v].configure(image=[self.letraax, self.letrabx, self.letracx, self.letradx, self.letraex][x])
+            if i == new_position and i == answers[row]:
+                buttons[k + i].configure(
+                    image=[self.letraax, self.letrabx, self.letracx, self.letradx, self.letraex][i])
+            elif i == new_position:
+                buttons[k + i].configure(
+                    image=[self.letraaass, self.letrabass, self.letracass, self.letradass, self.letraeass][i])
+            elif i == answers[row]:
+                buttons[k + i].configure(
+                    image=[self.letraax, self.letrabx, self.letracx, self.letradx, self.letraex][i])
+            else:
+                buttons[k + i].configure(image=[self.letraa, self.letrab, self.letrac, self.letrad, self.letrae][i])
 
     def save_result(self, nm_student, correct_question, total_question):
         try:
@@ -267,6 +288,14 @@ class ConfereAqui:
         except sqlite3.Error as e:
             messagebox.showerror("Erro", f"Erro ao salvar no banco de dados: {e}")
 
+    def recalculate_score(self):
+        score = [1 if answer[x] == myindex[x] else 0 for x in range(25)]
+        scoreporcent = (sum(score) / 25) * 100
+        correct_question = sum(score)
+        scoreporcent = Decimal(scoreporcent).quantize(Decimal("0.00"), rounding=ROUND_DOWN)
+
+        self.correct_label.configure(text='{0}{1}'.format(correct_question, '/25'))
+        self.scoreporcent_label.configure(text='{0}{1}'.format(scoreporcent, '%'))
 
 if __name__ == "__main__":
     root = tkinter.Tk()
